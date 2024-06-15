@@ -92,6 +92,29 @@ async function run() {
       }
     });
 
+    // submitted assignments update api
+    app.put("/submittedAssignmentData", async (req, res) => {
+      const giveMark = req.body;
+      try {
+        const id = req.query;
+        const query = { _id: new ObjectId(id) };
+
+        const updatedDoc = {
+          $set: {
+            assignmentStatus: "complete",
+            marks: giveMark?.marks,
+            feedBack: giveMark?.feedBack,
+            Examinee: giveMark?.Examinee,
+          },
+        };
+
+        const result = await submissionAssignmentCollection.updateOne(query, updatedDoc);
+        res.send(result);
+      } catch (error) {
+        res.status(401).send(error);
+      }
+    });
+
     // get all assingmet data api
     app.get("/assignments", async (req, res) => {
       try {
@@ -102,25 +125,26 @@ async function run() {
       }
     });
 
-
     // submitted assignment data loaded api
-    app.get("/submittedAssignmentData", async(req, res) => {
+    app.get("/submittedAssignmentData", async (req, res) => {
       const email = req?.query?.email;
       const pending = req.query.pending;
-      console.log(pending);
+      // console.log(pending);
 
-      try{
-        const filter = {email: email};
+      try {
+        const filter = { email: email };
 
-        if(pending){
+        if (pending) {
           filter.assignmentStatus = pending;
         }
-        const result = await submissionAssignmentCollection.find(filter).toArray();
+        const result = await submissionAssignmentCollection
+          .find(filter)
+          .toArray();
         res.send(result);
-      }catch(erro){
+      } catch (erro) {
         res.status(401).send(erro);
       }
-    })
+    });
 
     // delete the assignment api
     app.delete("/assignment/:id", async (req, res) => {
