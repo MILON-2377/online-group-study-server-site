@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
+const jwt = require("jsonwebtoken");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -35,6 +36,34 @@ async function run() {
     const submissionAssignmentCollection = client
       .db("assignmentDB")
       .collection("submittedAssignments");
+
+    // verify user with token
+
+    const verifyToken = (req, res, next) => {
+      const token = req.headers.authorization;
+
+      if (!token) {
+        res.status(401).send({ message: "accesss unauthorized" });
+      } else {
+        jwt.verify(token.split(" ")[1], process.env.TOKEN, (error, decoded) => {
+          if (error) {
+            res.status(401).send({ message: "access unathurized" });
+          } else {
+            req.decoded = decoded;
+            next();
+          }
+        });
+      }
+    };
+
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      // console.log(user);
+
+      const token = jwt.sign(user, process.env.TOKEN, { expiresIn: "1hr" });
+
+      res.send({ token });
+    });
 
     // assignment create api
     app.post("/createassignment", async (req, res) => {
@@ -108,7 +137,10 @@ async function run() {
           },
         };
 
-        const result = await submissionAssignmentCollection.updateOne(query, updatedDoc);
+        const result = await submissionAssignmentCollection.updateOne(
+          query,
+          updatedDoc
+        );
         res.send(result);
       } catch (error) {
         res.status(401).send(error);
@@ -116,7 +148,7 @@ async function run() {
     });
 
     // get all assingmet data api
-    app.get("/assignments", async (req, res) => {
+    app.get("/assignments", verifyToken, async (req, res) => {
       try {
         const result = await assignmentDataCollection.find().toArray();
         res.send(result);
@@ -132,10 +164,10 @@ async function run() {
       // console.log(pending);
 
       try {
-        const filter = { email: email };
+        let filter = { email: email };
 
         if (pending) {
-          filter.assignmentStatus = pending;
+          filter = { assignmentStatus: pending };
         }
         const result = await submissionAssignmentCollection
           .find(filter)
